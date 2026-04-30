@@ -79,6 +79,10 @@ button.btn-success { background: #10b981; color: white; }
 </head>
 <body>
 <div id="app">
+    <header>
+        <h1>📊 Sistema de Comissionamento | Gestão de Calibração</h1>
+        <button class="dark-mode-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    </header>
     <div id="mainApp">
         <button class="menu-toggle" onclick="toggleMenu()">☰ Menu</button>
         <nav class="menu" id="mainMenu">
@@ -131,17 +135,19 @@ button.btn-success { background: #10b981; color: white; }
 </div>
 
 <script>
-const SUPABASE_URL = "hhttps://ddjeyrkxpugzkehiuvgx.supabase.co";
+// CORRIGIDO: Removido o 'h' extra da URL
+const SUPABASE_URL = "https://ddjeyrkxpugzkehiuvgx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
 
 let sb_com = null, currentUser = null;
 let equipamentos = [], obras = [], visaoGeral = null;
 let statusChart = null, calibrationChart = null;
 
-// URLs dos HTMLs separados (assumindo que estão no mesmo diretório)
-// Ajuste os nomes dos arquivos conforme necessário
-const EQUIPAMENTOS_HTML_URL = "equipamentos.html";
-const OBRAS_HTML_URL = "obras.html";
+// URLs dos HTMLs - CONFIGURE AQUI COM O LINK DO GITHUB
+// Exemplo: https://SEU-USUARIO.github.io/SEU-REPOSITORIO/equipamentos.html
+const BASE_URL = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+const EQUIPAMENTOS_HTML_URL = BASE_URL + "equipamentos.html";
+const OBRAS_HTML_URL = BASE_URL + "obras.html";
 
 function showToast(msg, type = 'info') { 
     let toast = document.createElement('div'); 
@@ -158,21 +164,16 @@ function toggleMenu() {
 }
 
 function trocarAba(id, element) {
-    // Esconde todas as páginas
     document.querySelectorAll('.pagina').forEach(p => p.classList.add('hidden'));
-    // Mostra a página selecionada
     const pagina = document.getElementById(id);
     if(pagina) pagina.classList.remove('hidden');
     
-    // Atualiza classe ativa do menu
     document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
     if(element) element.classList.add('active');
     
-    // Fecha menu mobile
     const menu = document.getElementById('mainMenu');
     if(menu && window.innerWidth <= 768) menu.classList.remove('show');
     
-    // Se for a visão geral, atualiza os dados
     if(id === 'visao') {
         atualizarDashboard();
     }
@@ -180,7 +181,7 @@ function trocarAba(id, element) {
 
 function abrirEquipamentos() {
     const iframe = document.getElementById('iframeEquipamentos');
-    if(iframe) {
+    if(iframe && iframe.src !== EQUIPAMENTOS_HTML_URL) {
         iframe.src = EQUIPAMENTOS_HTML_URL;
     }
     trocarAba('equipamentosFrame', document.querySelector('.menu a:nth-child(2)'));
@@ -188,7 +189,7 @@ function abrirEquipamentos() {
 
 function abrirObras() {
     const iframe = document.getElementById('iframeObras');
-    if(iframe) {
+    if(iframe && iframe.src !== OBRAS_HTML_URL) {
         iframe.src = OBRAS_HTML_URL;
     }
     trocarAba('obrasFrame', document.querySelector('.menu a:nth-child(3)'));
@@ -225,7 +226,6 @@ function atualizarDashboard() {
     }).length;
     const valorTotal = equipamentos.reduce((acc, e) => acc + (e.preco || 0), 0);
     
-    // Atualiza cards
     const statsDiv = document.getElementById('statsDashboardEnhanced');
     if(statsDiv) {
         statsDiv.innerHTML = `
@@ -256,7 +256,6 @@ function atualizarDashboard() {
         `;
     }
     
-    // Atualiza alertas
     const alertasDiv = document.getElementById('alertasCalibracao');
     if(alertasDiv) {
         const alertas = equipamentos.filter(e => {
@@ -278,7 +277,6 @@ function atualizarDashboard() {
         }
     }
     
-    // Atualiza gráficos
     const statusCount = { Operação: 0, DEFEITO: 0, Engenharia: 0 };
     equipamentos.forEach(e => {
         if(statusCount[e.status] !== undefined) statusCount[e.status]++;
@@ -387,24 +385,39 @@ function toggleDarkMode() {
     localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
 }
 
-// Verifica se os arquivos HTML existem, caso contrário mostra mensagem
-function verificarArquivos() {
+// Carrega os iframes quando necessário
+function carregarIframes() {
     const iframeEq = document.getElementById('iframeEquipamentos');
     const iframeOb = document.getElementById('iframeObras');
     
-    iframeEq.onerror = function() {
-        iframeEq.srcdoc = '<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;"><div style="text-align:center;"><h2>📁 Arquivo não encontrado</h2><p>O arquivo <strong>equipamentos.html</strong> não foi encontrado.</p><p>Certifique-se de que o arquivo está no mesmo diretório.</p></div></body></html>';
+    // Só carrega quando a aba for acessada pela primeira vez (lazy load)
+    let equipamentosCarregado = false;
+    let obrasCarregado = false;
+    
+    const originalAbrirEquipamentos = window.abrirEquipamentos;
+    const originalAbrirObras = window.abrirObras;
+    
+    window.abrirEquipamentos = function() {
+        if(!equipamentosCarregado && iframeEq) {
+            iframeEq.src = EQUIPAMENTOS_HTML_URL;
+            equipamentosCarregado = true;
+        }
+        originalAbrirEquipamentos();
     };
     
-    iframeOb.onerror = function() {
-        iframeOb.srcdoc = '<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;"><div style="text-align:center;"><h2>📁 Arquivo não encontrado</h2><p>O arquivo <strong>obras.html</strong> não foi encontrado.</p><p>Certifique-se de que o arquivo está no mesmo diretório.</p></div></body></html>';
+    window.abrirObras = function() {
+        if(!obrasCarregado && iframeOb) {
+            iframeOb.src = OBRAS_HTML_URL;
+            obrasCarregado = true;
+        }
+        originalAbrirObras();
     };
 }
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
-    verificarArquivos();
+    carregarIframes();
 });
 
 initSupabase();
