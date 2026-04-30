@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Gestão de Equipamentos | Comissionamento</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+    --bg-primary: #f0f4f8;
+    --bg-secondary: #ffffff;
+    --text-primary: #1e2a3e;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    --primary-color: #3b82f6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --favorite-color: #fbbf24;
+}
+body.dark-mode {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    --favorite-color: #fbbf24;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.3s, color 0.3s; }
+header { background: linear-gradient(135deg, #1e3a5f 0%, #0f2b3d 100%); color: white; padding: 1.2rem 1.5rem; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; }
+header h1 { margin: 0; font-size: 1.4rem; }
+.dark-mode-btn { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; padding: 8px 16px; color: white; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+.container { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 18px; margin-top: 20px; }
+.card { background: var(--bg-secondary); border-radius: 20px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+.card h3 { margin: 0 0 8px 0; font-size: 1rem; border-left: 4px solid #3b82f6; padding-left: 10px; }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.card-header-left { flex: 1; }
+.card-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: 12px; }
+.equipamento-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-primary); }
+.favorite-icon { cursor: pointer; font-size: 1.4rem; transition: transform 0.2s; background: none; border: none; padding: 4px; margin: -4px; }
+.favorite-icon:hover { transform: scale(1.1); }
+.favorite-icon.favorited { color: var(--favorite-color); }
+.badge { background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-family: monospace; font-size: 0.7rem; display: inline-block; }
+.status-operacao { background: #dcfce7; color: #166534; }
+.status-defeito { background: #fee2e2; color: #991b1b; }
+.status-engenharia { background: #dbeafe; color: #1e40af; }
+.cal-status-ok { background: #dcfce7; color: #166534; }
+.cal-status-warning { background: #fef9c3; color: #854d0e; }
+.cal-status-expired { background: #fee2e2; color: #991b1b; }
+.acoes-card { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 10px; }
+.certificado-link { margin-top: 8px; text-align: center; }
+.certificado-link a { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-color); color: white; padding: 6px 12px; border-radius: 24px; text-decoration: none; font-size: 0.7rem; font-weight: 600; transition: opacity 0.2s; }
+.certificado-link a:hover { opacity: 0.85; }
+.filter-bar { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+.filter-btn { background: var(--bg-primary); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+.filter-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+button { background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 40px; font-weight: 600; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+button:hover { transform: scale(1.02); opacity: 0.9; }
+button.btn-primary { background: #3b82f6; color: white; }
+button.btn-danger { background: #ef4444; color: white; }
+button.btn-success { background: #10b981; color: white; }
+.form-panel { background: var(--bg-secondary); border-radius: 28px; padding: 20px 24px; margin-bottom: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+.form-group { margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.form-group label { min-width: 160px; font-weight: 600; font-size: 0.85rem; }
+input, select, textarea { padding: 8px 14px; border-radius: 60px; border: 1px solid var(--border-color); flex: 1; font-size: 0.85rem; background: var(--bg-secondary); color: var(--text-primary); transition: border 0.2s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+.toast-notification { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 40px; z-index: 1000; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stats-bar { background: var(--bg-secondary); border-radius: 20px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; border: 1px solid var(--border-color); }
+.stat-item { text-align: center; }
+.stat-value { font-size: 1.8rem; font-weight: 800; }
+.stat-label { font-size: 0.75rem; color: var(--text-secondary); }
+.preview-img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); }
+
+@media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+    .form-group { flex-direction: column; align-items: stretch; }
+    .form-group label { min-width: auto; }
+    .equipamento-thumb { width: 60px; height: 60px; }
+}
+</style>
+</head>
+<body>
+<header>
+    <h1>🔧 Gestão de Equipamentos | Comissionamento</h1>
+    <button class="dark-mode-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+</header>
+<div class="container">
+    <!-- Formulário de Cadastro -->
+    <div class="form-panel">
+        <h2>✏️ Cadastro de Equipamento</h2>
+        <div class="form-group"><label>EQUIPAMENTO:</label><input type="text" id="eqNome" placeholder="Nome do equipamento"></div>
+        <div class="form-group"><label>MODELO:</label><input type="text" id="eqModelo" placeholder="Modelo"></div>
+        <div class="form-group"><label>Nº SÉRIE:</label><input type="text" id="eqSerial" placeholder="Número de série"></div>
+        <div class="form-group"><label>STATUS:</label><select id="eqStatus"><option>Operação</option><option>DEFEITO</option><option>Engenharia</option></select></div>
+        <div class="form-group"><label>PERIODICIDADE:</label><select id="eqPeriodicidade"><option>Anual</option><option>Semestral</option><option>Trimestral</option></select></div>
+        <div class="form-group"><label>Nº CERTIFICADO:</label><input type="text" id="eqCertificado" placeholder="Número do certificado"></div>
+        <div class="form-group"><label>DATA CALIBRAÇÃO:</label><input type="date" id="eqDataCal"></div>
+        <div class="form-group"><label>PRÓXIMA CALIBRAÇÃO:</label><input type="date" id="eqProxCal"></div>
+        <div class="form-group"><label>PREÇO (R$):</label><input type="number" id="eqPreco" step="0.01" value="0"></div>
+        <div class="form-group"><label>URL CERTIFICADO:</label><input type="url" id="eqCertificadoUrl" placeholder="https://..."></div>
+        <div class="form-group"><label>URL ÍCONE:</label><input type="url" id="eqIconUrl" placeholder="https://... (URL da imagem)"></div>
+        <div class="form-group"><label>🔍 PRÉVIA:</label><img id="iconPreview" class="preview-img" src="https://cdn-icons-png.flaticon.com/512/476/476085.png" alt="Prévia"></div>
+        <input type="hidden" id="editId" value="">
+        <div class="btn-group"><button class="btn-primary" onclick="salvarEquipamento()">💾 Salvar</button><button onclick="limparForm()">Cancelar</button></div>
+    </div>
+
+    <!-- Barra de estatísticas -->
+    <div class="stats-bar">
+        <div class="stat-item"><div class="stat-value" id="totalEquipamentos">0</div><div class="stat-label">Total</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalFavoritos">0</div><div class="stat-label">Favoritos</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalVencidos">0</div><div class="stat-label">Vencidos</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalProximos">0</div><div class="stat-label">Próx 30d</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalValor">R$ 0</div><div class="stat-label">Valor Total</div></div>
+    </div>
+
+    <!-- Barra de filtros -->
+    <div class="filter-bar">
+        <input type="text" id="globalSearch" placeholder="🔍 Buscar equipamento..." style="flex:1; min-width:200px;">
+        <button id="btnFiltrarFavoritos" class="filter-btn" onclick="toggleFiltroFavoritos()">⭐ Somente Favoritos</button>
+        <button class="filter-btn" onclick="limparFiltroFavoritos()">📋 Mostrar Todos</button>
+        <button class="btn-success" onclick="exportarParaExcel()">📊 Exportar Excel</button>
+    </div>
+
+    <!-- Lista de equipamentos -->
+    <div id="listaEquipamentos" class="grid"></div>
+</div>
+
+<script>
+
+const SUPABASE_URL = "https://ddjeyrkxpugzkehiuvgx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
+
+let sb_com = null, currentUser = null, equipamentos = [], mostrarApenasFavoritos = false;
+const DEFAULT_ICON_URL = "https://cdn-icons-png.flaticon.com/512/476/476085.png";
+
+// Converte link do Google Drive para link direto de download
+function converterGoogleDriveUrl(url) {
+    if (!url || url.trim() === "") return DEFAULT_ICON_URL;
+    
+    const pattern = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view/;
+    const match = url.match(pattern);
+    
+    if (match && match[1]) {
+        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    }
+    
+    const altPattern = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
+    const altMatch = url.match(altPattern);
+    
+    if (altMatch && altMatch[1]) {
+        return `https://drive.google.com/uc?export=download&id=${altMatch[1]}`;
+    }
+    
+    return url;
+}
+
+function showToast(msg, type = 'info') { 
+    let toast = document.createElement('div'); 
+    toast.className = 'toast-notification'; 
+    toast.style.background = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'; 
+    toast.innerText = msg; 
+    document.body.appendChild(toast); 
+    setTimeout(() => toast.remove(), 3000); 
+}
+
+function formatarData(d){ if(!d) return "-"; let dt=new Date(d); return isNaN(dt.getTime())?d:dt.toLocaleDateString('pt-BR'); }
+
+function calcularPrazo(p){ 
+    if(!p) return {texto:"-",dias:null}; 
+    let h=new Date();h.setHours(0,0,0,0); 
+    let prox=new Date(p); 
+    if(isNaN(prox.getTime())) return {texto:"Inválida",dias:null}; 
+    let diff=Math.ceil((prox-h)/86400000); 
+    if(diff<0) return {texto:`VENCIDO HÁ ${Math.abs(diff)} DIAS`,dias:diff}; 
+    if(diff===0) return {texto:"VENCE HOJE",dias:0}; 
+    if(diff<=30) return {texto:`VENCE EM ${diff} DIAS`,dias:diff}; 
+    return {texto:`${diff} dias`,dias:diff}; 
+}
+
+function getStatusCalClass(p){ 
+    let c=calcularPrazo(p); 
+    if(c.dias===null) return "cal-status-warning"; 
+    if(c.dias<0) return "cal-status-expired"; 
+    if(c.dias<=30) return "cal-status-warning"; 
+    return "cal-status-ok"; 
+}
+
+function safeString(v){ return v===null||v===undefined?"":String(v); }
+
+function atualizarStats() {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const vencidos = equipamentos.filter(e => e.proxcal && new Date(e.proxcal) < hoje).length;
+    const proximos = equipamentos.filter(e => { if(!e.proxcal) return false; let d = Math.ceil((new Date(e.proxcal) - hoje) / 86400000); return d >= 0 && d <= 30; }).length;
+    const favoritos = equipamentos.filter(e => e.favorito === true).length;
+    const valorTotal = equipamentos.reduce((acc,e) => acc + (e.preco || 0), 0);
+    
+    document.getElementById('totalEquipamentos').innerText = equipamentos.length;
+    document.getElementById('totalFavoritos').innerText = favoritos;
+    document.getElementById('totalVencidos').innerText = vencidos;
+    document.getElementById('totalProximos').innerText = proximos;
+    document.getElementById('totalValor').innerHTML = `R$ ${valorTotal.toLocaleString('pt-BR')}`;
+}
+
+function renderizarEquipamentos(){ 
+    let c=document.getElementById('listaEquipamentos'); 
+    if(!c) return; 
+    let term=(document.getElementById('globalSearch')?.value||"").toLowerCase(); 
+    let lista = equipamentos.filter(e => e.equipamento?.toLowerCase().includes(term) || (e.modelo||"").toLowerCase().includes(term) || safeString(e.serie).toLowerCase().includes(term));
+    if(mostrarApenasFavoritos) lista = lista.filter(e => e.favorito === true);
+    
+    if(lista.length === 0) {
+        c.innerHTML = '<div class="card" style="text-align:center; padding:40px;">📭 Nenhum equipamento encontrado.</div>';
+        return;
+    }
+    
+    c.innerHTML=lista.map(e=>{ 
+        let sc=e.status==="Operação"?"status-operacao":e.status==="DEFEITO"?"status-defeito":"status-engenharia"; 
+        let isFavorito = e.favorito === true;
+        let iconUrl = e.icon_url ? converterGoogleDriveUrl(e.icon_url) : DEFAULT_ICON_URL;
+        let certUrl = e.certificado_url ? converterGoogleDriveUrl(e.certificado_url) : "#";
+        let certNum = e.certificado || "Certificado";
+        return `<div class="card">
+            <div class="card-header">
+                <div class="card-header-left"><h3>${e.equipamento}</h3></div>
+                <div class="card-header-right">
+                    <img src="${iconUrl}" alt="Icon" class="equipamento-thumb" loading="lazy" onerror="this.src='${DEFAULT_ICON_URL}';" />
+                    <button class="favorite-icon ${isFavorito ? 'favorited' : ''}" onclick="toggleFavorito('${e.id}')">${isFavorito ? '★' : '☆'}</button>
+                </div>
+            </div>
+            <div><span class="badge">📟 ${e.modelo||"-"}</span><span class="badge">🔢 ${safeString(e.serie).substring(0,20)}</span></div>
+            <div><span class="status-badge ${sc}">${e.status||"-"}</span></div>
+            <div><span class="badge">📅 ${formatarData(e.datacal)} → ${formatarData(e.proxcal)}</span></div>
+            <div><span class="badge ${getStatusCalClass(e.proxcal)}">⏱️ ${calcularPrazo(e.proxcal).texto}</span></div>
+            ${certUrl !== "#" ? `<div class="certificado-link"><a href="${certUrl}" target="_blank" rel="noopener noreferrer">📄 ${certNum}</a></div>` : `<div class="certificado-link"><span style="background:#ccc;padding:6px 12px;border-radius:24px;font-size:0.7rem;">📄 ${certNum}</span></div>`}
+            <div class="acoes-card"><button onclick="editarEquipamento('${e.id}')">✏️</button><button class="btn-danger" onclick="excluirEquipamento('${e.id}')">🗑️</button></div>
+        </div>`; 
+    }).join(''); 
+}
+
+async function toggleFavorito(id) {
+    const equip = equipamentos.find(e => e.id === id);
+    if(!equip) return;
+    const novoStatus = !equip.favorito;
+    try {
+        const { error } = await sb_com.from('comissionamento_equipamentos').update({ favorito: novoStatus }).eq('id', id);
+        if(error) throw error;
+        equip.favorito = novoStatus;
+        renderizarEquipamentos();
+        atualizarStats();
+        showToast(novoStatus ? "⭐ Adicionado aos favoritos!" : "☆ Removido dos favoritos!", "success");
+    } catch(err) {
+        showToast("Erro ao atualizar favorito: " + err.message, "error");
+    }
+}
+
+function toggleFiltroFavoritos() {
+    mostrarApenasFavoritos = !mostrarApenasFavoritos;
+    const btn = document.getElementById('btnFiltrarFavoritos');
+    if(btn) {
+        if(mostrarApenasFavoritos) {
+            btn.classList.add('active');
+            btn.innerHTML = '⭐ Mostrando Favoritos';
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '⭐ Somente Favoritos';
+        }
+    }
+    renderizarEquipamentos();
+}
+
+function limparFiltroFavoritos() {
+    mostrarApenasFavoritos = false;
+    const btn = document.getElementById('btnFiltrarFavoritos');
+    if(btn) {
+        btn.classList.remove('active');
+        btn.innerHTML = '⭐ Somente Favoritos';
+    }
+    renderizarEquipamentos();
+}
+
+async function salvarEquipamento() { 
+    let iconUrlRaw = document.getElementById('eqIconUrl').value.trim();
+    let certificadoUrlRaw = document.getElementById('eqCertificadoUrl').value.trim();
+    
+    let iconUrl = iconUrlRaw ? converterGoogleDriveUrl(iconUrlRaw) : null;
+    let certificadoUrl = certificadoUrlRaw ? converterGoogleDriveUrl(certificadoUrlRaw) : null;
+    
+    let eq={ 
+        equipamento:document.getElementById('eqNome').value.trim(), 
+        modelo:document.getElementById('eqModelo').value.trim(), 
+        serie:document.getElementById('eqSerial').value.trim(), 
+        status:document.getElementById('eqStatus').value, 
+        periodicidade:document.getElementById('eqPeriodicidade').value, 
+        certificado:document.getElementById('eqCertificado').value.trim(), 
+        datacal:document.getElementById('eqDataCal').value, 
+        proxcal:document.getElementById('eqProxCal').value, 
+        preco:parseFloat(document.getElementById('eqPreco').value)||0,
+        certificado_url:certificadoUrl,
+        icon_url:iconUrl,
+        favorito:false
+    }; 
+    let id=document.getElementById('editId').value; 
+    const btn = document.activeElement;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
+    
+    try {
+        if(id) await sb_com.from('comissionamento_equipamentos').update(eq).eq('id',id); 
+        else await sb_com.from('comissionamento_equipamentos').insert([{...eq, criado_por:currentUser.id}]); 
+        limparForm(); 
+        await carregarDadosDoBanco(); 
+        renderizarEquipamentos(); 
+        atualizarStats();
+        showToast("Equipamento salvo!","success"); 
+    } catch(err) {
+        showToast("Erro ao salvar: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 Salvar';
+    }
+}
+
+async function excluirEquipamento(id){ 
+    if(confirm("Excluir equipamento?")){ 
+        await sb_com.from('comissionamento_equipamentos').delete().eq('id',id); 
+        await carregarDadosDoBanco(); 
+        renderizarEquipamentos(); 
+        atualizarStats();
+        showToast("Excluído!","success"); 
+    } 
+}
+
+function editarEquipamento(id){ 
+    let eq=equipamentos.find(e=>e.id===id); 
+    if(eq){ 
+        document.getElementById('eqNome').value=eq.equipamento; 
+        document.getElementById('eqModelo').value=eq.modelo||""; 
+        document.getElementById('eqSerial').value=eq.serie||""; 
+        document.getElementById('eqStatus').value=eq.status||"Operação"; 
+        document.getElementById('eqPeriodicidade').value=eq.periodicidade||"Anual"; 
+        document.getElementById('eqCertificado').value=eq.certificado||""; 
+        document.getElementById('eqDataCal').value=eq.datacal||""; 
+        document.getElementById('eqProxCal').value=eq.proxcal||""; 
+        document.getElementById('eqPreco').value=eq.preco||0; 
+        document.getElementById('eqCertificadoUrl').value=eq.certificado_url||""; 
+        document.getElementById('eqIconUrl').value=eq.icon_url||""; 
+        document.getElementById('editId').value=eq.id; 
+        
+        const preview = document.getElementById('iconPreview');
+        if(preview && eq.icon_url) {
+            preview.src = converterGoogleDriveUrl(eq.icon_url);
+        }
+        window.scrollTo({top: 0, behavior: 'smooth'}); 
+    } 
+}
+
+function limparForm(){ 
+    document.getElementById('eqNome').value=""; 
+    document.getElementById('eqModelo').value=""; 
+    document.getElementById('eqSerial').value=""; 
+    document.getElementById('eqStatus').value="Operação"; 
+    document.getElementById('eqPeriodicidade').value="Anual"; 
+    document.getElementById('eqCertificado').value=""; 
+    document.getElementById('eqDataCal').value=""; 
+    document.getElementById('eqProxCal').value=""; 
+    document.getElementById('eqPreco').value="0"; 
+    document.getElementById('eqCertificadoUrl').value=""; 
+    document.getElementById('eqIconUrl').value=""; 
+    document.getElementById('editId').value=""; 
+    const preview = document.getElementById('iconPreview');
+    if(preview) preview.src = DEFAULT_ICON_URL;
+}
+
+function exportarParaExcel(){ 
+    let wsData = [["EQUIPAMENTO","MODELO","SÉRIE","STATUS","DATA CAL","PRÓXIMA CAL","PRAZO","PREÇO","CERTIFICADO","URL ÍCONE"]];
+    equipamentos.forEach(e => {
+        let prazo = calcularPrazo(e.proxcal).texto;
+        wsData.push([
+            e.equipamento, e.modelo || "-", safeString(e.serie), e.status || "-",
+            formatarData(e.datacal), formatarData(e.proxcal), prazo,
+            `R$ ${(e.preco || 0).toLocaleString('pt-BR')}`,
+            e.certificado || "-", e.icon_url || "-"
+        ]);
+    });
+    let ws = XLSX.utils.aoa_to_sheet(wsData);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Equipamentos");
+    XLSX.writeFile(wb, `equipamentos_${Date.now()}.xlsx`);
+    showToast("Excel exportado!","success");
+}
+
+async function carregarDadosPadrao() { 
+    const padrao = [
+        { equipamento:"VIOLA TD", modelo:"VIOLA TD", serie:"21 464 45 004", status:"DEFEITO", periodicidade:"Anual", certificado:"CC2503-245", datacal:"2025-03-18", proxcal:"2026-03-18", preco:0, favorito:false, icon_url:"https://cdn-icons-png.flaticon.com/512/476/476085.png" },
+        { equipamento:"MEGOHMETRO", modelo:"MD 10KVR", serie:"UO 8118 L", status:"Operação", periodicidade:"Anual", certificado:"72750", datacal:"2026-03-16", proxcal:"2027-03-16", preco:320, favorito:false, icon_url:"https://cdn-icons-png.flaticon.com/512/2104/2104400.png" },
+        { equipamento:"ALICATE AMPERÍMETRO", modelo:"HT9025", serie:"220204416", status:"Operação", periodicidade:"Anual", certificado:"C208184/25", datacal:"2025-07-10", proxcal:"2026-07-10", preco:89.9, favorito:false, icon_url:"https://cdn-icons-png.flaticon.com/512/422/422230.png" }
+    ]; 
+    for(const eq of padrao) await sb_com.from('comissionamento_equipamentos').insert([{...eq, criado_por:currentUser.id}]); 
+    await carregarDadosDoBanco(); 
+}
+
+async function carregarDadosDoBanco() { 
+    if(!currentUser) return; 
+    const {data:eq}=await sb_com.from('comissionamento_equipamentos').select('*').order('created_at',{ascending:false}); 
+    if(eq) equipamentos=eq; 
+    if(equipamentos.length===0) await carregarDadosPadrao(); 
+    renderizarEquipamentos(); 
+    atualizarStats();
+}
+
+async function initSupabase() { 
+    sb_com = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
+    const { data: { session } } = await sb_com.auth.getSession(); 
+    if (!session) { window.location.href = 'index.html'; return; } 
+    currentUser = session.user; 
+    await carregarDadosDoBanco(); 
+}
+
+function toggleDarkMode(){ 
+    document.body.classList.toggle('dark-mode'); 
+    localStorage.setItem('darkMode',document.body.classList.contains('dark-mode')); 
+}
+
+// Preview do ícone em tempo real
+document.getElementById('eqIconUrl')?.addEventListener('input', function() {
+    const preview = document.getElementById('iconPreview');
+    if(preview) {
+        let url = this.value.trim();
+        preview.src = url ? converterGoogleDriveUrl(url) : DEFAULT_ICON_URL;
+    }
+});
+
+document.getElementById('globalSearch')?.addEventListener('input', () => renderizarEquipamentos());
+
+if(localStorage.getItem('darkMode')==='true') document.body.classList.add('dark-mode');
+
+initSupabase();
+</script>
+</body>
+</html>

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Gestão de Obras | Comissionamento</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+    --bg-primary: #f0f4f8;
+    --bg-secondary: #ffffff;
+    --text-primary: #1e2a3e;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    --primary-color: #3b82f6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+}
+body.dark-mode {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.3s, color 0.3s; }
+header { background: linear-gradient(135deg, #1e3a5f 0%, #0f2b3d 100%); color: white; padding: 1.2rem 1.5rem; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; }
+header h1 { margin: 0; font-size: 1.4rem; }
+.dark-mode-btn { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; padding: 8px 16px; color: white; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+.container { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 18px; margin-top: 20px; }
+.card { background: var(--bg-secondary); border-radius: 20px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-color); transition: transform 0.2s, box-shadow 0.2s; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+.card h3 { margin: 0 0 12px 0; font-size: 1.1rem; border-left: 4px solid #3b82f6; padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
+.card h3 span { font-size: 0.8rem; font-weight: normal; background: var(--bg-primary); padding: 4px 10px; border-radius: 20px; }
+.badge { background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-family: monospace; font-size: 0.7rem; display: inline-block; margin: 2px; }
+.status-operacao { background: #dcfce7; color: #166534; }
+.status-defeito { background: #fee2e2; color: #991b1b; }
+.status-engenharia { background: #dbeafe; color: #1e40af; }
+.equipamento-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+.equipamento-item:last-child { border-bottom: none; }
+.equipamento-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.equipamento-nome { font-weight: 600; font-size: 0.9rem; }
+.equipamento-detalhes { font-size: 0.7rem; color: var(--text-secondary); }
+.btn-group { display: flex; gap: 8px; }
+button { background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 40px; font-weight: 600; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+button:hover { transform: scale(1.02); opacity: 0.9; }
+button.btn-primary { background: #3b82f6; color: white; }
+button.btn-danger { background: #ef4444; color: white; }
+button.btn-success { background: #10b981; color: white; }
+button.btn-warning { background: #f59e0b; color: white; }
+.form-panel { background: var(--bg-secondary); border-radius: 28px; padding: 20px 24px; margin-bottom: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+.form-group { margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.form-group label { min-width: 120px; font-weight: 600; font-size: 0.85rem; }
+input, select { padding: 8px 14px; border-radius: 60px; border: 1px solid var(--border-color); flex: 1; font-size: 0.85rem; background: var(--bg-secondary); color: var(--text-primary); transition: border 0.2s; }
+input:focus, select:focus { outline: none; border-color: #3b82f6; }
+.stats-bar { background: var(--bg-secondary); border-radius: 20px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; border: 1px solid var(--border-color); }
+.stat-item { text-align: center; }
+.stat-value { font-size: 1.8rem; font-weight: 800; }
+.stat-label { font-size: 0.75rem; color: var(--text-secondary); }
+.filter-bar { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+.filter-btn { background: var(--bg-primary); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+.toast-notification { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 40px; z-index: 1000; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.equipamentos-disponiveis { background: var(--bg-secondary); border-radius: 20px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-color); }
+.equipamentos-disponiveis h4 { margin: 0 0 12px 0; font-size: 1rem; }
+.disponivel-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+.disponivel-item:last-child { border-bottom: none; }
+
+@media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+    .form-group { flex-direction: column; align-items: stretch; }
+    .form-group label { min-width: auto; }
+}
+</style>
+</head>
+<body>
+<header>
+    <h1>🏗️ Gestão de Obras | Comissionamento</h1>
+    <button class="dark-mode-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+</header>
+<div class="container">
+    <!-- Formulário de Cadastro de Obra -->
+    <div class="form-panel">
+        <h2>➕ Nova Obra</h2>
+        <div class="form-group">
+            <label>NOME DA OBRA:</label>
+            <input type="text" id="novaObraNome" placeholder="Ex: Residencial Solar, Comercial Centro...">
+            <button class="btn-primary" onclick="criarObra()">📌 Criar Obra</button>
+        </div>
+    </div>
+
+    <!-- Barra de estatísticas -->
+    <div class="stats-bar">
+        <div class="stat-item"><div class="stat-value" id="totalObras">0</div><div class="stat-label">Total de Obras</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalEquipAlocados">0</div><div class="stat-label">Equip. Alocados</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalEquipDisponiveis">0</div><div class="stat-label">Equip. Disponíveis</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalEquipGeral">0</div><div class="stat-label">Total Equipamentos</div></div>
+    </div>
+
+    <!-- Barra de filtros -->
+    <div class="filter-bar">
+        <input type="text" id="globalSearch" placeholder="🔍 Buscar obra..." style="flex:1; min-width:200px;">
+        <button class="btn-success" onclick="exportarParaExcel()">📊 Exportar Relatório</button>
+    </div>
+
+    <!-- Equipamentos Disponíveis para alocação -->
+    <div class="equipamentos-disponiveis" id="equipamentosDisponiveis">
+        <h4>📦 Equipamentos Disponíveis para Alocação</h4>
+        <div id="listaDisponiveis">Carregando...</div>
+    </div>
+
+    <!-- Lista de Obras -->
+    <div id="obrasContainer" class="grid"></div>
+</div>
+
+<script>
+
+const SUPABASE_URL = "https://ddjeyrkxpugzkehiuvgx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
+
+let sb_com = null, currentUser = null, equipamentos = [], obras = [];
+
+function showToast(msg, type = 'info') { 
+    let toast = document.createElement('div'); 
+    toast.className = 'toast-notification'; 
+    toast.style.background = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'; 
+    toast.innerText = msg; 
+    document.body.appendChild(toast); 
+    setTimeout(() => toast.remove(), 3000); 
+}
+
+function formatarData(d){ if(!d) return "-"; let dt=new Date(d); return isNaN(dt.getTime())?d:dt.toLocaleDateString('pt-BR'); }
+function safeString(v){ return v===null||v===undefined?"":String(v); }
+
+function atualizarStats() {
+    const equipAlocados = equipamentos.filter(e => e.obra_id).length;
+    const equipDisponiveis = equipamentos.filter(e => !e.obra_id).length;
+    
+    document.getElementById('totalObras').innerText = obras.length;
+    document.getElementById('totalEquipAlocados').innerText = equipAlocados;
+    document.getElementById('totalEquipDisponiveis').innerText = equipDisponiveis;
+    document.getElementById('totalEquipGeral').innerText = equipamentos.length;
+}
+
+function getStatusClass(status) {
+    if(status === "Operação") return "status-operacao";
+    if(status === "DEFEITO") return "status-defeito";
+    return "status-engenharia";
+}
+
+function renderizarEquipamentosDisponiveis() {
+    const container = document.getElementById('listaDisponiveis');
+    if(!container) return;
+    
+    const disponiveis = equipamentos.filter(e => !e.obra_id);
+    const term = (document.getElementById('globalSearch')?.value || "").toLowerCase();
+    let filtered = disponiveis;
+    if(term) {
+        filtered = disponiveis.filter(e => 
+            e.equipamento?.toLowerCase().includes(term) || 
+            (e.modelo || "").toLowerCase().includes(term) ||
+            safeString(e.serie).toLowerCase().includes(term)
+        );
+    }
+    
+    if(filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">📭 Nenhum equipamento disponível no momento.</div>';
+        return;
+    }
+    
+    container.innerHTML = filtered.map(e => `
+        <div class="disponivel-item">
+            <div class="equipamento-info">
+                <span class="equipamento-nome">🔧 ${e.equipamento}</span>
+                <span class="equipamento-detalhes">${e.modelo || "-"} | Série: ${safeString(e.serie).substring(0,15)} | Status: ${e.status || "-"}</span>
+            </div>
+            <select onchange="moverParaObra('${e.id}', this.value)" style="width:180px;">
+                <option value="">Selecionar obra...</option>
+                ${obras.map(o => `<option value="${o.id}">${o.nome}</option>`).join('')}
+            </select>
+        </div>
+    `).join('');
+}
+
+function renderizarObras() {
+    const container = document.getElementById('obrasContainer');
+    if(!container) return;
+    
+    const term = (document.getElementById('globalSearch')?.value || "").toLowerCase();
+    let filteredObras = obras;
+    if(term) {
+        filteredObras = obras.filter(o => o.nome?.toLowerCase().includes(term));
+    }
+    
+    if(filteredObras.length === 0) {
+        container.innerHTML = '<div class="card empty-state">📭 Nenhuma obra cadastrada.<br><br>Clique em "Criar Obra" para começar.</div>';
+        return;
+    }
+    
+    container.innerHTML = filteredObras.map(o => {
+        const eqs = equipamentos.filter(e => e.obra_id === o.id);
+        return `
+            <div class="card">
+                <h3>
+                    🏗️ ${o.nome}
+                    <span>${eqs.length} equipamento(s)</span>
+                </h3>
+                <div style="margin-bottom: 12px;">
+                    ${eqs.length === 0 ? '<div style="color: var(--text-secondary); font-size: 0.8rem;">Nenhum equipamento alocado</div>' : ''}
+                    ${eqs.map(e => `
+                        <div class="equipamento-item">
+                            <div class="equipamento-info">
+                                <span class="equipamento-nome">🔧 ${e.equipamento}</span>
+                                <span class="equipamento-detalhes">
+                                    ${e.modelo || "-"} | Série: ${safeString(e.serie).substring(0,15)} | 
+                                    <span class="${getStatusClass(e.status)}" style="padding:2px 6px; border-radius:12px; font-size:0.65rem;">${e.status || "-"}</span>
+                                    ${e.proxcal ? ` | Próx. Cal: ${formatarData(e.proxcal)}` : ''}
+                                </span>
+                            </div>
+                            <button class="btn-danger" onclick="removerDaObra('${e.id}')" style="padding:4px 12px;">✖️ Remover</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                    <button class="btn-warning" onclick="editarObra('${o.id}', '${o.nome.replace(/'/g, "\\'")}')">✏️ Editar</button>
+                    <button class="btn-danger" onclick="excluirObra('${o.id}')">🗑️ Excluir Obra</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderizarTudo() {
+    renderizarEquipamentosDisponiveis();
+    renderizarObras();
+    atualizarStats();
+}
+
+async function moverParaObra(eqId, obraId) {
+    if(!obraId) return;
+    try {
+        await sb_com.from('comissionamento_equipamentos').update({ obra_id: obraId }).eq('id', eqId);
+        await carregarDadosDoBanco();
+        renderizarTudo();
+        showToast("Equipamento movido para a obra!", "success");
+    } catch(err) {
+        showToast("Erro ao mover: " + err.message, "error");
+    }
+}
+
+async function removerDaObra(eqId) {
+    try {
+        await sb_com.from('comissionamento_equipamentos').update({ obra_id: null }).eq('id', eqId);
+        await carregarDadosDoBanco();
+        renderizarTudo();
+        showToast("Equipamento removido da obra!", "success");
+    } catch(err) {
+        showToast("Erro ao remover: " + err.message, "error");
+    }
+}
+
+async function criarObra() {
+    const nome = document.getElementById('novaObraNome').value.trim();
+    if(!nome) {
+        showToast("Digite um nome para a obra", "error");
+        return;
+    }
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Criando...';
+    
+    try {
+        await sb_com.from('comissionamento_obras').insert([{ nome, criado_por: currentUser.id }]);
+        document.getElementById('novaObraNome').value = "";
+        await carregarDadosDoBanco();
+        renderizarTudo();
+        showToast(`Obra "${nome}" criada com sucesso!`, "success");
+    } catch(err) {
+        showToast("Erro ao criar obra: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📌 Criar Obra';
+    }
+}
+
+async function editarObra(id, nomeAtual) {
+    const novoNome = prompt("Digite o novo nome da obra:", nomeAtual);
+    if(!novoNome || novoNome.trim() === "") return;
+    
+    try {
+        await sb_com.from('comissionamento_obras').update({ nome: novoNome.trim() }).eq('id', id);
+        await carregarDadosDoBanco();
+        renderizarTudo();
+        showToast("Obra atualizada!", "success");
+    } catch(err) {
+        showToast("Erro ao editar: " + err.message, "error");
+    }
+}
+
+async function excluirObra(id) {
+    const obra = obras.find(o => o.id === id);
+    if(!confirm(`Excluir a obra "${obra?.nome}"?\n\nOs equipamentos serão desalocados (voltarão ao estoque).`)) return;
+    
+    try {
+        await sb_com.from('comissionamento_equipamentos').update({ obra_id: null }).eq('obra_id', id);
+        await sb_com.from('comissionamento_obras').delete().eq('id', id);
+        await carregarDadosDoBanco();
+        renderizarTudo();
+        showToast("Obra excluída!", "success");
+    } catch(err) {
+        showToast("Erro ao excluir: " + err.message, "error");
+    }
+}
+
+function exportarParaExcel() {
+    const wsData = [["OBRA", "EQUIPAMENTO", "MODELO", "Nº SÉRIE", "STATUS", "DATA CALIBRAÇÃO", "PRÓXIMA CALIBRAÇÃO", "CERTIFICADO"]];
+    
+    obras.forEach(obra => {
+        const equipamentosObra = equipamentos.filter(e => e.obra_id === obra.id);
+        if(equipamentosObra.length === 0) {
+            wsData.push([obra.nome, "-", "-", "-", "-", "-", "-", "-"]);
+        } else {
+            equipamentosObra.forEach(eq => {
+                wsData.push([
+                    obra.nome,
+                    eq.equipamento || "-",
+                    eq.modelo || "-",
+                    safeString(eq.serie),
+                    eq.status || "-",
+                    formatarData(eq.datacal),
+                    formatarData(eq.proxcal),
+                    eq.certificado || "-"
+                ]);
+            });
+        }
+    });
+    
+    // Adicionar equipamentos não alocados
+    const naoAlocados = equipamentos.filter(e => !e.obra_id);
+    if(naoAlocados.length > 0) {
+        wsData.push(["📦 EQUIPAMENTOS DISPONÍVEIS", "", "", "", "", "", "", ""]);
+        naoAlocados.forEach(eq => {
+            wsData.push([
+                "Disponível",
+                eq.equipamento || "-",
+                eq.modelo || "-",
+                safeString(eq.serie),
+                eq.status || "-",
+                formatarData(eq.datacal),
+                formatarData(eq.proxcal),
+                eq.certificado || "-"
+            ]);
+        });
+    }
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Obras e Equipamentos");
+    XLSX.writeFile(wb, `obras_${Date.now()}.xlsx`);
+    showToast("Relatório exportado!", "success");
+}
+
+async function carregarDadosPadrao() {
+    const obrasPadrao = [
+        { nome: "Obra 1 - Residencial Solar", criado_por: currentUser.id },
+        { nome: "Obra 2 - Comercial Centro", criado_por: currentUser.id }
+    ];
+    for(const ob of obrasPadrao) {
+        await sb_com.from('comissionamento_obras').insert([ob]);
+    }
+    
+    const equipamentosPadrao = [
+        { equipamento: "VIOLA TD", modelo: "VIOLA TD", serie: "21 464 45 004", status: "DEFEITO", periodicidade: "Anual", certificado: "CC2503-245", datacal: "2025-03-18", proxcal: "2026-03-18", preco: 0, criado_por: currentUser.id },
+        { equipamento: "MEGOHMETRO", modelo: "MD 10KVR", serie: "UO 8118 L", status: "Operação", periodicidade: "Anual", certificado: "72750", datacal: "2026-03-16", proxcal: "2027-03-16", preco: 320, criado_por: currentUser.id },
+        { equipamento: "ALICATE AMPERÍMETRO", modelo: "HT9025", serie: "220204416", status: "Operação", periodicidade: "Anual", certificado: "C208184/25", datacal: "2025-07-10", proxcal: "2026-07-10", preco: 89.9, criado_por: currentUser.id }
+    ];
+    for(const eq of equipamentosPadrao) {
+        await sb_com.from('comissionamento_equipamentos').insert([eq]);
+    }
+}
+
+async function carregarDadosDoBanco() {
+    if(!currentUser) return;
+    
+    const { data: eq } = await sb_com.from('comissionamento_equipamentos').select('*');
+    if(eq) equipamentos = eq;
+    
+    const { data: ob } = await sb_com.from('comissionamento_obras').select('*');
+    if(ob) obras = ob;
+    
+    if(equipamentos.length === 0 && obras.length === 0) {
+        await carregarDadosPadrao();
+        const { data: eq2 } = await sb_com.from('comissionamento_equipamentos').select('*');
+        const { data: ob2 } = await sb_com.from('comissionamento_obras').select('*');
+        if(eq2) equipamentos = eq2;
+        if(ob2) obras = ob2;
+    }
+}
+
+async function initSupabase() {
+    sb_com = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { session } } = await sb_com.auth.getSession();
+    if (!session) { 
+        window.location.href = 'index.html'; 
+        return; 
+    }
+    currentUser = session.user;
+    await carregarDadosDoBanco();
+    renderizarTudo();
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+}
+
+// Event listeners
+document.getElementById('globalSearch')?.addEventListener('input', () => {
+    renderizarEquipamentosDisponiveis();
+    renderizarObras();
+});
+
+if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
+
+initSupabase();
+</script>
+</body>
+</html>
