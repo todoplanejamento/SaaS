@@ -43,8 +43,8 @@ header h1 { margin: 0; font-size: 1.4rem; }
 .menu a { padding: 12px 18px; text-decoration: none; color: var(--text-primary); font-weight: 600; cursor: pointer; border-radius: 30px 30px 0 0; font-size: 0.85rem; transition: all 0.2s; }
 .menu a.active { background: #eef2ff; color: #1e3a8a; border-bottom: 3px solid #3b82f6; }
 body.dark-mode .menu a.active { background: #1e3a5f; color: #60a5fa; }
-.pagina { padding: 20px 24px; max-width: 1600px; margin: 0 auto; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.pagina { padding: 20px 24px; max-width: 1600px; margin: 0 auto; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .hidden { display: none; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 20px; margin-bottom: 30px; }
 .stat-card-enhanced { background: var(--bg-secondary); border-radius: 24px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; border: 1px solid var(--border-color); }
@@ -68,12 +68,50 @@ button.btn-success { background: #10b981; color: white; }
 .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.iframe-container {
+    position: relative;
+    width: 100%;
+    min-height: 500px;
+}
+.iframe-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-secondary);
+}
+.iframe-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 10px;
+}
+iframe {
+    width: 100%;
+    height: calc(100vh - 120px);
+    border: none;
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    transition: opacity 0.2s;
+}
+iframe.iframe-hidden {
+    opacity: 0;
+}
+iframe.iframe-visible {
+    opacity: 1;
+}
+
 @media (max-width: 768px) {
     .menu-toggle { display: block; }
     .menu { display: none; flex-direction: column; position: absolute; top: 60px; left: 0; right: 0; background: var(--menu-bg); z-index: 1000; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .menu.show { display: flex; }
     .menu a { border-radius: 20px; margin: 2px 0; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    iframe { height: calc(100vh - 100px); }
 }
 </style>
 </head>
@@ -87,10 +125,11 @@ button.btn-success { background: #10b981; color: white; }
         <button class="menu-toggle" onclick="window.toggleMenu()">☰ Menu</button>
         <nav class="menu" id="mainMenu">
             <a onclick="window.trocarAba('visao', this)" class="active">📊 Visão Geral</a>
-            <a onclick="window.abrirEquipamentos()">🔧 Equipamentos</a>
-            <a onclick="window.abrirObras()">🏗️ Obras</a>
+            <a onclick="window.trocarAba('equipamentos', this)">🔧 Equipamentos</a>
+            <a onclick="window.trocarAba('obras', this)">🏗️ Obras</a>
         </nav>
         
+        <!-- Aba Visão Geral -->
         <div id="visao" class="pagina">
             <div class="stats-grid" id="statsDashboardEnhanced"></div>
             
@@ -118,11 +157,26 @@ button.btn-success { background: #10b981; color: white; }
             </div>
         </div>
         
-        <div id="equipamentosFrame" class="pagina hidden" style="padding: 0;">
-            <iframe id="iframeEquipamentos" style="width: 100%; height: calc(100vh - 120px); border: none; border-radius: 20px;"></iframe>
+        <!-- Aba Equipamentos (com loading) -->
+        <div id="equipamentos" class="pagina hidden">
+            <div class="iframe-container" id="equipamentosContainer">
+                <div class="iframe-loading" id="equipamentosLoading">
+                    <div class="spinner"></div>
+                    <div>Carregando equipamentos...</div>
+                </div>
+                <iframe id="iframeEquipamentos" style="opacity: 0;"></iframe>
+            </div>
         </div>
-        <div id="obrasFrame" class="pagina hidden" style="padding: 0;">
-            <iframe id="iframeObras" style="width: 100%; height: calc(100vh - 120px); border: none; border-radius: 20px;"></iframe>
+        
+        <!-- Aba Obras (com loading) -->
+        <div id="obras" class="pagina hidden">
+            <div class="iframe-container" id="obrasContainer">
+                <div class="iframe-loading" id="obrasLoading">
+                    <div class="spinner"></div>
+                    <div>Carregando obras...</div>
+                </div>
+                <iframe id="iframeObras" style="opacity: 0;"></iframe>
+            </div>
         </div>
         
         <footer style="text-align:center; padding:16px; font-size:0.75rem;">Sistema de Comissionamento - Gestão de Calibração</footer>
@@ -137,13 +191,16 @@ const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
 let sb_com = null, currentUser = null;
 let equipamentos = [], obras = [], visaoGeral = null;
 let statusChart = null, calibrationChart = null;
+let iframesCarregados = {
+    equipamentos: false,
+    obras: false
+};
 
 // URLs dos HTMLs
 const BASE_URL = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
 const EQUIPAMENTOS_HTML_URL = BASE_URL + "equipamentos.html";
 const OBRAS_HTML_URL = BASE_URL + "obras.html";
 
-// Utilitários
 function showToast(msg, type = 'info') { 
     let toast = document.createElement('div'); 
     toast.className = 'toast-notification'; 
@@ -159,35 +216,61 @@ function toggleMenu() {
 }
 
 function trocarAba(id, element) {
+    // Esconder todas as abas
     document.querySelectorAll('.pagina').forEach(p => p.classList.add('hidden'));
+    
+    // Mostrar a aba selecionada
     const pagina = document.getElementById(id);
     if(pagina) pagina.classList.remove('hidden');
     
+    // Atualizar menu ativo
     document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
     if(element) element.classList.add('active');
     
+    // Fechar menu mobile se aberto
     const menu = document.getElementById('mainMenu');
     if(menu && window.innerWidth <= 768) menu.classList.remove('show');
     
-    if(id === 'visao') {
+    // Carregar iframe apenas quando necessário (lazy load)
+    if(id === 'equipamentos' && !iframesCarregados.equipamentos) {
+        carregarIframe('equipamentos');
+    } else if(id === 'obras' && !iframesCarregados.obras) {
+        carregarIframe('obras');
+    } else if(id === 'visao') {
         atualizarDashboard();
     }
 }
 
-function abrirEquipamentos() {
-    const iframe = document.getElementById('iframeEquipamentos');
-    if(iframe && !iframe.src) {
-        iframe.src = EQUIPAMENTOS_HTML_URL;
-    }
-    trocarAba('equipamentosFrame', document.querySelector('.menu a:nth-child(2)'));
-}
-
-function abrirObras() {
-    const iframe = document.getElementById('iframeObras');
-    if(iframe && !iframe.src) {
-        iframe.src = OBRAS_HTML_URL;
-    }
-    trocarAba('obrasFrame', document.querySelector('.menu a:nth-child(3)'));
+function carregarIframe(tipo) {
+    const iframe = document.getElementById(`iframe${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`);
+    const loadingDiv = document.getElementById(`${tipo}Loading`);
+    
+    if(!iframe) return;
+    
+    // Definir a URL correta
+    let url = tipo === 'equipamentos' ? EQUIPAMENTOS_HTML_URL : OBRAS_HTML_URL;
+    
+    // Configurar evento de load do iframe
+    iframe.onload = function() {
+        // Esconder loading e mostrar iframe
+        if(loadingDiv) loadingDiv.style.display = 'none';
+        iframe.style.opacity = '1';
+        iframesCarregados[tipo] = true;
+        
+        // Sincronizar dark mode com o iframe carregado
+        const isDark = document.body.classList.contains('dark-mode');
+        iframe.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
+    };
+    
+    // Definir timeout para caso o iframe demore muito
+    setTimeout(() => {
+        if(loadingDiv && loadingDiv.style.display !== 'none') {
+            loadingDiv.innerHTML = '<div class="spinner"></div><div>Recarregando...</div>';
+        }
+    }, 3000);
+    
+    // Carregar o iframe
+    iframe.src = url;
 }
 
 function formatarData(d) { 
@@ -224,23 +307,23 @@ function atualizarDashboard() {
     const statsDiv = document.getElementById('statsDashboardEnhanced');
     if(statsDiv) {
         statsDiv.innerHTML = `
-            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.trocarAba('equipamentos', null)">
                 <div class="stat-value">${total}</div>
                 <div>Total Equipamentos</div>
             </div>
-            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.trocarAba('equipamentos', null)">
                 <div class="stat-value">${disponiveis}</div>
                 <div>Disponíveis</div>
             </div>
-            <div class="stat-card-enhanced" onclick="window.abrirObras()">
+            <div class="stat-card-enhanced" onclick="window.trocarAba('obras', null)">
                 <div class="stat-value">${emObra}</div>
                 <div>Em Obras</div>
             </div>
-            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.trocarAba('equipamentos', null)">
                 <div class="stat-value" style="color:#ef4444;">${vencidos}</div>
                 <div>Cal. Vencidas</div>
             </div>
-            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.trocarAba('equipamentos', null)">
                 <div class="stat-value" style="color:#f59e0b;">${proximos}</div>
                 <div>Vencem em 30d</div>
             </div>
@@ -387,23 +470,21 @@ function toggleDarkMode() {
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('darkMode', isDark);
     
-    // Sincroniza com os iframes
-    const iframeEq = document.getElementById('iframeEquipamentos');
-    const iframeOb = document.getElementById('iframeObras');
-    if(iframeEq && iframeEq.contentWindow) {
-        iframeEq.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
-    }
-    if(iframeOb && iframeOb.contentWindow) {
-        iframeOb.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
-    }
+    // Sincroniza com os iframes se já estiverem carregados
+    ['equipamentos', 'obras'].forEach(tipo => {
+        if(iframesCarregados[tipo]) {
+            const iframe = document.getElementById(`iframe${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`);
+            if(iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
+            }
+        }
+    });
 }
 
 // Expor funções globalmente
 window.toggleDarkMode = toggleDarkMode;
 window.toggleMenu = toggleMenu;
 window.trocarAba = trocarAba;
-window.abrirEquipamentos = abrirEquipamentos;
-window.abrirObras = abrirObras;
 window.salvarVisaoGeral = salvarVisaoGeral;
 
 // Inicialização
@@ -411,6 +492,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if(localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark-mode');
     }
+    
+    // Garantir que os containers de loading fiquem visíveis inicialmente
+    const equipLoading = document.getElementById('equipamentosLoading');
+    const obrasLoading = document.getElementById('obrasLoading');
+    if(equipLoading) equipLoading.style.display = 'flex';
+    if(obrasLoading) obrasLoading.style.display = 'flex';
+    
+    // Esconder os iframes inicialmente
+    const iframeEq = document.getElementById('iframeEquipamentos');
+    const iframeOb = document.getElementById('iframeObras');
+    if(iframeEq) iframeEq.style.opacity = '0';
+    if(iframeOb) iframeOb.style.opacity = '0';
 });
 
 initSupabase();
