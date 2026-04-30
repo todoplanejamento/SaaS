@@ -406,7 +406,6 @@ async function initSupabase() {
     sb_com = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
     const { data: { session } } = await sb_com.auth.getSession(); 
     if (!session) { 
-        // Redireciona para a página de login se não estiver autenticado
         window.location.href = 'index.html'; 
         return; 
     } 
@@ -419,6 +418,26 @@ function toggleDarkMode(){
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('darkMode', isDark);
 }
+
+// Forçar o iframe a usar o tema correto imediatamente
+(function() {
+    const isDark = localStorage.getItem('darkMode') === 'true';
+    if(isDark) {
+        document.body.classList.add('dark-mode');
+    }
+    
+    // Ouvir mensagens do parent
+    window.addEventListener('message', function(event) {
+        if(event.data && event.data.type === 'toggleDarkMode') {
+            if(event.data.darkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('darkMode', event.data.darkMode);
+        }
+    });
+})();
 
 // Expor funções globalmente
 window.toggleDarkMode = toggleDarkMode;
@@ -441,18 +460,6 @@ document.getElementById('eqIconUrl')?.addEventListener('input', function() {
 });
 
 document.getElementById('globalSearch')?.addEventListener('input', () => renderizarEquipamentos());
-
-// Recebe mensagens do parent para dark mode
-window.addEventListener('message', function(event) {
-    if(event.data && event.data.type === 'toggleDarkMode') {
-        if(event.data.darkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-        localStorage.setItem('darkMode', event.data.darkMode);
-    }
-});
 
 if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
 
