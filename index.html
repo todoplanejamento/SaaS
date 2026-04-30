@@ -81,21 +81,19 @@ button.btn-success { background: #10b981; color: white; }
 <div id="app">
     <header>
         <h1>📊 Sistema de Comissionamento | Gestão de Calibração</h1>
-        <button class="dark-mode-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+        <button class="dark-mode-btn" onclick="window.toggleDarkMode()">🌙 Dark Mode</button>
     </header>
     <div id="mainApp">
-        <button class="menu-toggle" onclick="toggleMenu()">☰ Menu</button>
+        <button class="menu-toggle" onclick="window.toggleMenu()">☰ Menu</button>
         <nav class="menu" id="mainMenu">
-            <a onclick="trocarAba('visao', this)" class="active">📊 Visão Geral</a>
-            <a onclick="abrirEquipamentos()">🔧 Equipamentos</a>
-            <a onclick="abrirObras()">🏗️ Obras</a>
+            <a onclick="window.trocarAba('visao', this)" class="active">📊 Visão Geral</a>
+            <a onclick="window.abrirEquipamentos()">🔧 Equipamentos</a>
+            <a onclick="window.abrirObras()">🏗️ Obras</a>
         </nav>
         
         <div id="visao" class="pagina">
-            <!-- Cards de estatísticas -->
             <div class="stats-grid" id="statsDashboardEnhanced"></div>
             
-            <!-- Gráficos -->
             <div class="charts-container">
                 <div class="chart-card">
                     <h3>📊 Status dos Equipamentos</h3>
@@ -107,22 +105,19 @@ button.btn-success { background: #10b981; color: white; }
                 </div>
             </div>
             
-            <!-- Alertas de calibração -->
             <div class="form-panel">
                 <h3>⚠️ Calibrações Vencidas ou Próximas (≤ 30 dias)</h3>
                 <div id="alertasCalibracao"></div>
             </div>
             
-            <!-- Anotações da visão geral -->
             <div class="form-panel">
                 <h3>📌 Anotações da Visão Geral</h3>
                 <textarea id="visaoGeralAnotacoes" rows="4" placeholder="Digite suas anotações aqui..."></textarea>
-                <button class="btn-primary" onclick="salvarVisaoGeral()" id="btnSalvarVisao" style="margin-top: 12px;">💾 Salvar Anotações</button>
+                <button class="btn-primary" onclick="window.salvarVisaoGeral()" id="btnSalvarVisao" style="margin-top: 12px;">💾 Salvar Anotações</button>
                 <div id="visaoGeralInfo" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary);"></div>
             </div>
         </div>
         
-        <!-- Placeholders para os iframes das outras abas -->
         <div id="equipamentosFrame" class="pagina hidden" style="padding: 0;">
             <iframe id="iframeEquipamentos" style="width: 100%; height: calc(100vh - 120px); border: none; border-radius: 20px;"></iframe>
         </div>
@@ -135,7 +130,7 @@ button.btn-success { background: #10b981; color: white; }
 </div>
 
 <script>
-// CORRIGIDO: Removido o 'h' extra da URL
+// CONFIGURAÇÕES
 const SUPABASE_URL = "https://ddjeyrkxpugzkehiuvgx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
 
@@ -143,12 +138,12 @@ let sb_com = null, currentUser = null;
 let equipamentos = [], obras = [], visaoGeral = null;
 let statusChart = null, calibrationChart = null;
 
-// URLs dos HTMLs - CONFIGURE AQUI COM O LINK DO GITHUB
-// Exemplo: https://SEU-USUARIO.github.io/SEU-REPOSITORIO/equipamentos.html
+// URLs dos HTMLs
 const BASE_URL = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
 const EQUIPAMENTOS_HTML_URL = BASE_URL + "equipamentos.html";
 const OBRAS_HTML_URL = BASE_URL + "obras.html";
 
+// Utilitários
 function showToast(msg, type = 'info') { 
     let toast = document.createElement('div'); 
     toast.className = 'toast-notification'; 
@@ -181,7 +176,7 @@ function trocarAba(id, element) {
 
 function abrirEquipamentos() {
     const iframe = document.getElementById('iframeEquipamentos');
-    if(iframe && iframe.src !== EQUIPAMENTOS_HTML_URL) {
+    if(iframe && !iframe.src) {
         iframe.src = EQUIPAMENTOS_HTML_URL;
     }
     trocarAba('equipamentosFrame', document.querySelector('.menu a:nth-child(2)'));
@@ -189,7 +184,7 @@ function abrirEquipamentos() {
 
 function abrirObras() {
     const iframe = document.getElementById('iframeObras');
-    if(iframe && iframe.src !== OBRAS_HTML_URL) {
+    if(iframe && !iframe.src) {
         iframe.src = OBRAS_HTML_URL;
     }
     trocarAba('obrasFrame', document.querySelector('.menu a:nth-child(3)'));
@@ -229,23 +224,23 @@ function atualizarDashboard() {
     const statsDiv = document.getElementById('statsDashboardEnhanced');
     if(statsDiv) {
         statsDiv.innerHTML = `
-            <div class="stat-card-enhanced" onclick="abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
                 <div class="stat-value">${total}</div>
                 <div>Total Equipamentos</div>
             </div>
-            <div class="stat-card-enhanced" onclick="abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
                 <div class="stat-value">${disponiveis}</div>
                 <div>Disponíveis</div>
             </div>
-            <div class="stat-card-enhanced" onclick="abrirObras()">
+            <div class="stat-card-enhanced" onclick="window.abrirObras()">
                 <div class="stat-value">${emObra}</div>
                 <div>Em Obras</div>
             </div>
-            <div class="stat-card-enhanced" onclick="abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
                 <div class="stat-value" style="color:#ef4444;">${vencidos}</div>
                 <div>Cal. Vencidas</div>
             </div>
-            <div class="stat-card-enhanced" onclick="abrirEquipamentos()">
+            <div class="stat-card-enhanced" onclick="window.abrirEquipamentos()">
                 <div class="stat-value" style="color:#f59e0b;">${proximos}</div>
                 <div>Vencem em 30d</div>
             </div>
@@ -277,9 +272,12 @@ function atualizarDashboard() {
         }
     }
     
-    const statusCount = { Operação: 0, DEFEITO: 0, Engenharia: 0 };
+    // Status dos equipamentos
+    const statusCount = { "Operação": 0, "DEFEITO": 0, "Engenharia": 0 };
     equipamentos.forEach(e => {
-        if(statusCount[e.status] !== undefined) statusCount[e.status]++;
+        const status = e.status || "Operação";
+        if(statusCount[status] !== undefined) statusCount[status]++;
+        else statusCount[status] = (statusCount[status] || 0) + 1;
     });
     
     const statusCanvas = document.getElementById('statusChart');
@@ -291,7 +289,7 @@ function atualizarDashboard() {
                 labels: Object.keys(statusCount),
                 datasets: [{
                     data: Object.values(statusCount),
-                    backgroundColor: ['#10b981', '#ef4444', '#3b82f6']
+                    backgroundColor: ['#10b981', '#ef4444', '#3b82f6', '#f59e0b']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: true }
@@ -354,17 +352,21 @@ async function salvarVisaoGeral() {
 async function carregarDadosDoBanco() {
     if(!currentUser) return;
     
-    const { data: eq } = await sb_com.from('comissionamento_equipamentos').select('*');
-    if(eq) equipamentos = eq;
-    
-    const { data: ob } = await sb_com.from('comissionamento_obras').select('*');
-    if(ob) obras = ob;
-    
-    const { data: vg } = await sb_com.from('comissionamento_visaogeral').select('*').maybeSingle();
-    if(vg) {
-        visaoGeral = vg;
-        const textarea = document.getElementById('visaoGeralAnotacoes');
-        if(textarea) textarea.value = vg.anotacoes || '';
+    try {
+        const { data: eq } = await sb_com.from('comissionamento_equipamentos').select('*');
+        if(eq) equipamentos = eq;
+        
+        const { data: ob } = await sb_com.from('comissionamento_obras').select('*');
+        if(ob) obras = ob;
+        
+        const { data: vg } = await sb_com.from('comissionamento_visaogeral').select('*').maybeSingle();
+        if(vg) {
+            visaoGeral = vg;
+            const textarea = document.getElementById('visaoGeralAnotacoes');
+            if(textarea) textarea.value = vg.anotacoes || '';
+        }
+    } catch(err) {
+        console.error("Erro ao carregar dados:", err);
     }
 }
 
@@ -382,42 +384,33 @@ async function initSupabase() {
 
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
-    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-}
-
-// Carrega os iframes quando necessário
-function carregarIframes() {
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    
+    // Sincroniza com os iframes
     const iframeEq = document.getElementById('iframeEquipamentos');
     const iframeOb = document.getElementById('iframeObras');
-    
-    // Só carrega quando a aba for acessada pela primeira vez (lazy load)
-    let equipamentosCarregado = false;
-    let obrasCarregado = false;
-    
-    const originalAbrirEquipamentos = window.abrirEquipamentos;
-    const originalAbrirObras = window.abrirObras;
-    
-    window.abrirEquipamentos = function() {
-        if(!equipamentosCarregado && iframeEq) {
-            iframeEq.src = EQUIPAMENTOS_HTML_URL;
-            equipamentosCarregado = true;
-        }
-        originalAbrirEquipamentos();
-    };
-    
-    window.abrirObras = function() {
-        if(!obrasCarregado && iframeOb) {
-            iframeOb.src = OBRAS_HTML_URL;
-            obrasCarregado = true;
-        }
-        originalAbrirObras();
-    };
+    if(iframeEq && iframeEq.contentWindow) {
+        iframeEq.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
+    }
+    if(iframeOb && iframeOb.contentWindow) {
+        iframeOb.contentWindow.postMessage({ type: 'toggleDarkMode', darkMode: isDark }, '*');
+    }
 }
+
+// Expor funções globalmente
+window.toggleDarkMode = toggleDarkMode;
+window.toggleMenu = toggleMenu;
+window.trocarAba = trocarAba;
+window.abrirEquipamentos = abrirEquipamentos;
+window.abrirObras = abrirObras;
+window.salvarVisaoGeral = salvarVisaoGeral;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
-    if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
-    carregarIframes();
+    if(localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
 });
 
 initSupabase();

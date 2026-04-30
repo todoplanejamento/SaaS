@@ -38,17 +38,17 @@ header h1 { margin: 0; font-size: 1.4rem; }
 .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
 .card h3 { margin: 0 0 12px 0; font-size: 1.1rem; border-left: 4px solid #3b82f6; padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
 .card h3 span { font-size: 0.8rem; font-weight: normal; background: var(--bg-primary); padding: 4px 10px; border-radius: 20px; }
-.badge { background: #f1f5f9; padding: 2px 8px; border-radius: 12px; font-family: monospace; font-size: 0.7rem; display: inline-block; margin: 2px; }
-.status-operacao { background: #dcfce7; color: #166534; }
-.status-defeito { background: #fee2e2; color: #991b1b; }
-.status-engenharia { background: #dbeafe; color: #1e40af; }
+.badge { background: var(--bg-primary); padding: 2px 8px; border-radius: 12px; font-family: monospace; font-size: 0.7rem; display: inline-block; margin: 2px; }
+.status-operacao { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 12px; font-size: 0.65rem; }
+.status-defeito { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 12px; font-size: 0.65rem; }
+.status-engenharia { background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 12px; font-size: 0.65rem; }
 .equipamento-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
 .equipamento-item:last-child { border-bottom: none; }
 .equipamento-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .equipamento-nome { font-weight: 600; font-size: 0.9rem; }
 .equipamento-detalhes { font-size: 0.7rem; color: var(--text-secondary); }
 .btn-group { display: flex; gap: 8px; }
-button { background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 40px; font-weight: 600; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+button { background: var(--bg-primary); border: none; padding: 8px 16px; border-radius: 40px; font-weight: 600; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; color: var(--text-primary); }
 button:hover { transform: scale(1.02); opacity: 0.9; }
 button.btn-primary { background: #3b82f6; color: white; }
 button.btn-danger { background: #ef4444; color: white; }
@@ -72,33 +72,34 @@ input:focus, select:focus { outline: none; border-color: #3b82f6; }
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .equipamentos-disponiveis { background: var(--bg-secondary); border-radius: 20px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-color); }
 .equipamentos-disponiveis h4 { margin: 0 0 12px 0; font-size: 1rem; }
-.disponivel-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+.disponivel-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
 .disponivel-item:last-child { border-bottom: none; }
+.disponivel-item select { width: 180px; }
 
 @media (max-width: 768px) {
     .grid { grid-template-columns: 1fr; }
     .form-group { flex-direction: column; align-items: stretch; }
     .form-group label { min-width: auto; }
+    .disponivel-item { flex-direction: column; align-items: stretch; }
+    .disponivel-item select { width: 100%; }
 }
 </style>
 </head>
 <body>
 <header>
     <h1>🏗️ Gestão de Obras | Comissionamento</h1>
-    <button class="dark-mode-btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    <button class="dark-mode-btn" onclick="window.toggleDarkMode()">🌙 Dark Mode</button>
 </header>
 <div class="container">
-    <!-- Formulário de Cadastro de Obra -->
     <div class="form-panel">
         <h2>➕ Nova Obra</h2>
         <div class="form-group">
             <label>NOME DA OBRA:</label>
             <input type="text" id="novaObraNome" placeholder="Ex: Residencial Solar, Comercial Centro...">
-            <button class="btn-primary" onclick="criarObra()">📌 Criar Obra</button>
+            <button class="btn-primary" onclick="window.criarObra(event)">📌 Criar Obra</button>
         </div>
     </div>
 
-    <!-- Barra de estatísticas -->
     <div class="stats-bar">
         <div class="stat-item"><div class="stat-value" id="totalObras">0</div><div class="stat-label">Total de Obras</div></div>
         <div class="stat-item"><div class="stat-value" id="totalEquipAlocados">0</div><div class="stat-label">Equip. Alocados</div></div>
@@ -106,24 +107,20 @@ input:focus, select:focus { outline: none; border-color: #3b82f6; }
         <div class="stat-item"><div class="stat-value" id="totalEquipGeral">0</div><div class="stat-label">Total Equipamentos</div></div>
     </div>
 
-    <!-- Barra de filtros -->
     <div class="filter-bar">
         <input type="text" id="globalSearch" placeholder="🔍 Buscar obra..." style="flex:1; min-width:200px;">
-        <button class="btn-success" onclick="exportarParaExcel()">📊 Exportar Relatório</button>
+        <button class="btn-success" onclick="window.exportarParaExcel()">📊 Exportar Relatório</button>
     </div>
 
-    <!-- Equipamentos Disponíveis para alocação -->
     <div class="equipamentos-disponiveis" id="equipamentosDisponiveis">
         <h4>📦 Equipamentos Disponíveis para Alocação</h4>
         <div id="listaDisponiveis">Carregando...</div>
     </div>
 
-    <!-- Lista de Obras -->
     <div id="obrasContainer" class="grid"></div>
 </div>
 
 <script>
-
 const SUPABASE_URL = "https://ddjeyrkxpugzkehiuvgx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_2z-sE96VF_gtr7P_Rt09pg_xbfH2vi7";
 
@@ -183,7 +180,7 @@ function renderizarEquipamentosDisponiveis() {
                 <span class="equipamento-nome">🔧 ${e.equipamento}</span>
                 <span class="equipamento-detalhes">${e.modelo || "-"} | Série: ${safeString(e.serie).substring(0,15)} | Status: ${e.status || "-"}</span>
             </div>
-            <select onchange="moverParaObra('${e.id}', this.value)" style="width:180px;">
+            <select onchange="window.moverParaObra('${e.id}', this.value)">
                 <option value="">Selecionar obra...</option>
                 ${obras.map(o => `<option value="${o.id}">${o.nome}</option>`).join('')}
             </select>
@@ -222,17 +219,17 @@ function renderizarObras() {
                                 <span class="equipamento-nome">🔧 ${e.equipamento}</span>
                                 <span class="equipamento-detalhes">
                                     ${e.modelo || "-"} | Série: ${safeString(e.serie).substring(0,15)} | 
-                                    <span class="${getStatusClass(e.status)}" style="padding:2px 6px; border-radius:12px; font-size:0.65rem;">${e.status || "-"}</span>
+                                    <span class="${getStatusClass(e.status)}">${e.status || "-"}</span>
                                     ${e.proxcal ? ` | Próx. Cal: ${formatarData(e.proxcal)}` : ''}
                                 </span>
                             </div>
-                            <button class="btn-danger" onclick="removerDaObra('${e.id}')" style="padding:4px 12px;">✖️ Remover</button>
+                            <button class="btn-danger" onclick="window.removerDaObra('${e.id}')" style="padding:4px 12px;">✖️ Remover</button>
                         </div>
                     `).join('')}
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-                    <button class="btn-warning" onclick="editarObra('${o.id}', '${o.nome.replace(/'/g, "\\'")}')">✏️ Editar</button>
-                    <button class="btn-danger" onclick="excluirObra('${o.id}')">🗑️ Excluir Obra</button>
+                    <button class="btn-warning" onclick="window.editarObra('${o.id}', '${o.nome.replace(/'/g, "\\'")}')">✏️ Editar</button>
+                    <button class="btn-danger" onclick="window.excluirObra('${o.id}')">🗑️ Excluir Obra</button>
                 </div>
             </div>
         `;
@@ -268,7 +265,7 @@ async function removerDaObra(eqId) {
     }
 }
 
-async function criarObra() {
+async function criarObra(event) {
     const nome = document.getElementById('novaObraNome').value.trim();
     if(!nome) {
         showToast("Digite um nome para a obra", "error");
@@ -344,7 +341,6 @@ function exportarParaExcel() {
         }
     });
     
-    // Adicionar equipamentos não alocados
     const naoAlocados = equipamentos.filter(e => !e.obra_id);
     if(naoAlocados.length > 0) {
         wsData.push(["📦 EQUIPAMENTOS DISPONÍVEIS", "", "", "", "", "", "", ""]);
@@ -420,13 +416,35 @@ async function initSupabase() {
 
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
-    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
 }
+
+// Expor funções globalmente
+window.toggleDarkMode = toggleDarkMode;
+window.criarObra = criarObra;
+window.moverParaObra = moverParaObra;
+window.removerDaObra = removerDaObra;
+window.editarObra = editarObra;
+window.excluirObra = excluirObra;
+window.exportarParaExcel = exportarParaExcel;
 
 // Event listeners
 document.getElementById('globalSearch')?.addEventListener('input', () => {
     renderizarEquipamentosDisponiveis();
     renderizarObras();
+});
+
+// Recebe mensagens do parent para dark mode
+window.addEventListener('message', function(event) {
+    if(event.data && event.data.type === 'toggleDarkMode') {
+        if(event.data.darkMode) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+        localStorage.setItem('darkMode', event.data.darkMode);
+    }
 });
 
 if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
