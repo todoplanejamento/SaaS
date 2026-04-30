@@ -420,6 +420,26 @@ function toggleDarkMode() {
     localStorage.setItem('darkMode', isDark);
 }
 
+// Forçar o iframe a usar o tema correto imediatamente
+(function() {
+    const isDark = localStorage.getItem('darkMode') === 'true';
+    if(isDark) {
+        document.body.classList.add('dark-mode');
+    }
+    
+    // Ouvir mensagens do parent
+    window.addEventListener('message', function(event) {
+        if(event.data && event.data.type === 'toggleDarkMode') {
+            if(event.data.darkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('darkMode', event.data.darkMode);
+        }
+    });
+})();
+
 // Expor funções globalmente
 window.toggleDarkMode = toggleDarkMode;
 window.criarObra = criarObra;
@@ -433,18 +453,6 @@ window.exportarParaExcel = exportarParaExcel;
 document.getElementById('globalSearch')?.addEventListener('input', () => {
     renderizarEquipamentosDisponiveis();
     renderizarObras();
-});
-
-// Recebe mensagens do parent para dark mode
-window.addEventListener('message', function(event) {
-    if(event.data && event.data.type === 'toggleDarkMode') {
-        if(event.data.darkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-        localStorage.setItem('darkMode', event.data.darkMode);
-    }
 });
 
 if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
